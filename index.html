@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KeuanganKu">
+<link rel="manifest" href="manifest.json">
+<title>KeuanganKu</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f6f8;color:#111827;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif}
+.app{max-width:620px;margin:auto;min-height:100vh;padding:env(safe-area-inset-top) 16px 90px}
+header{padding:24px 4px 16px}h1{margin:0;font-size:28px}.muted{color:#6b7280;font-size:13px}
+.card{background:#111827;color:white;border-radius:24px;padding:22px;margin:8px 0 16px;box-shadow:0 10px 25px #0001}
+.balance{font-size:34px;font-weight:750;margin:8px 0 18px}.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#ffffff14;border-radius:16px;padding:12px}.stat b{display:block;margin-top:5px}
+.tabs{display:flex;background:white;border-radius:16px;padding:4px;margin-bottom:14px;box-shadow:0 2px 10px #0000000a}.tabs button{flex:1;border:0;background:none;padding:11px;border-radius:12px;font-weight:650}.tabs button.active{background:#111827;color:white}
+.row{display:flex;align-items:center;justify-content:space-between;background:white;border-radius:16px;padding:14px;margin:8px 0}.left{display:flex;gap:12px;align-items:center}.icon{width:42px;height:42px;border-radius:13px;background:#eef2ff;display:grid;place-items:center;font-size:20px}
+.amount.in{color:#059669}.amount.out{color:#dc2626}.empty{text-align:center;padding:35px;color:#6b7280}
+.fab{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);border:0;background:#111827;color:white;border-radius:999px;padding:15px 22px;font-weight:700;font-size:16px;box-shadow:0 10px 25px #0003}
+.sheet{position:fixed;inset:0;background:#0006;display:none;align-items:end}.sheet.show{display:flex}.panel{background:#fff;width:100%;max-width:620px;margin:auto;border-radius:26px 26px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
+label{display:block;font-size:13px;color:#6b7280;margin:12px 0 6px}input,select{width:100%;padding:14px;border:1px solid #e5e7eb;border-radius:14px;font-size:16px;background:white}
+.type{display:flex;gap:8px}.type button{flex:1;padding:13px;border:1px solid #ddd;border-radius:13px;background:white;font-weight:650}.type .selected{background:#111827;color:white}
+.primary{width:100%;margin-top:18px;border:0;border-radius:15px;padding:15px;background:#111827;color:white;font-size:16px;font-weight:700}
+h2{font-size:18px;margin:20px 0 10px}.bar{height:12px;background:#e5e7eb;border-radius:20px;overflow:hidden}.bar i{display:block;height:100%;background:#111827}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div class="muted">Pencatat keuangan pribadi</div><h1>KeuanganKu</h1></header>
+<section class="card">
+<div class="muted" style="color:#cbd5e1">Saldo</div><div class="balance" id="balance">Rp0</div>
+<div class="stats"><div class="stat"><span class="muted" style="color:#cbd5e1">Pemasukan</span><b id="income">Rp0</b></div><div class="stat"><span class="muted" style="color:#cbd5e1">Pengeluaran</span><b id="expense">Rp0</b></div></div>
+</section>
+<div class="tabs"><button class="active" onclick="tab('home',this)">Transaksi</button><button onclick="tab('report',this)">Laporan</button></div>
+<div id="home"><div id="list"></div></div>
+<div id="report" style="display:none"><h2>Ringkasan bulan ini</h2><div id="reportBox"></div></div>
+<button class="fab" onclick="openSheet()">＋ Tambah transaksi</button>
+</div>
+
+<div class="sheet" id="sheet" onclick="if(event.target===this)closeSheet()">
+<div class="panel"><h2 style="margin-top:0">Tambah transaksi</h2>
+<div class="type"><button id="outBtn" class="selected" onclick="setType('out')">Pengeluaran</button><button id="inBtn" onclick="setType('in')">Pemasukan</button></div>
+<label>Nominal</label><input id="amount" type="number" inputmode="numeric" placeholder="Contoh: 50000">
+<label>Kategori</label><select id="category"><option>Makan</option><option>Transportasi</option><option>Belanja</option><option>Tagihan</option><option>Hiburan</option><option>Kesehatan</option><option>Gaji</option><option>Bonus</option><option>Lainnya</option></select>
+<label>Tanggal</label><input id="date" type="date">
+<label>Catatan</label><input id="note" placeholder="Contoh: makan siang">
+<button class="primary" onclick="save()">Simpan transaksi</button>
+</div></div>
+<script>
+const KEY="keuanganku-v1";let data=JSON.parse(localStorage.getItem(KEY)||"[]");let type="out";
+const rp=n=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(n);
+const esc=s=>String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+const icons={"Makan":"🍜","Transportasi":"🚗","Belanja":"🛍️","Tagihan":"🧾","Hiburan":"🎮","Kesehatan":"💊","Gaji":"💰","Bonus":"🎁","Lainnya":"📌"};
+function render(){let inc=data.filter(x=>x.type==="in").reduce((a,x)=>a+x.amount,0),out=data.filter(x=>x.type==="out").reduce((a,x)=>a+x.amount,0);balance.textContent=rp(inc-out);income.textContent=rp(inc);expense.textContent=rp(out);
+let list=[...data].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);document.getElementById("list").innerHTML=list.length?list.map(x=>`<div class="row"><div class="left"><div class="icon">${icons[x.category]||"📌"}</div><div><b>${esc(x.category)}</b><div class="muted">${new Date(x.date+"T00:00").toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"})}${x.note?" · "+esc(x.note):""}</div></div></div><div><b class="amount ${x.type}">${x.type==="in"?"+":"-"}${rp(x.amount)}</b><div style="text-align:right"><button style="border:0;background:none;color:#9ca3af" onclick="removeTx(${x.id})">Hapus</button></div></div></div>`).join(""):`<div class="empty">Belum ada transaksi.<br>Tekan “＋ Tambah transaksi” untuk mulai.</div>`;
+let month=new Date().toISOString().slice(0,7), md=data.filter(x=>x.date.startsWith(month));let cats={};md.filter(x=>x.type==="out").forEach(x=>cats[x.category]=(cats[x.category]||0)+x.amount);let total=Object.values(cats).reduce((a,b)=>a+b,0);document.getElementById("reportBox").innerHTML=Object.keys(cats).length?Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="row"><div style="width:100%"><div style="display:flex;justify-content:space-between"><b>${icons[k]||"📌"} ${esc(k)}</b><span>${rp(v)}</span></div><div class="bar"><i style="width:${total?v/total*100:0}%"></i></div></div></div>`).join(""):`<div class="empty">Belum ada pengeluaran bulan ini.</div>`;
+}
+function tab(t,b){document.getElementById("home").style.display=t==="home"?"block":"none";document.getElementById("report").style.display=t==="report"?"block":"none";document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active")}
+function openSheet(){date.value=new Date().toISOString().slice(0,10);sheet.classList.add("show")}
+function closeSheet(){sheet.classList.remove("show")}
+function setType(t){type=t;outBtn.classList.toggle("selected",t==="out");inBtn.classList.toggle("selected",t==="in")}
+function save(){let a=Number(amount.value);if(!a||a<=0){alert("Masukkan nominal yang valid.");return}data.push({id:Date.now(),type,amount:a,category:category.value,date:date.value,note:note.value.trim()});localStorage.setItem(KEY,JSON.stringify(data));amount.value="";note.value="";closeSheet();render()}
+function removeTx(id){if(confirm("Hapus transaksi ini?")){data=data.filter(x=>x.id!==id);localStorage.setItem(KEY,JSON.stringify(data));render()}}
+render();
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body></html>
